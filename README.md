@@ -71,9 +71,19 @@ pnpm lint
 pnpm typecheck
 ```
 
-## Coding-agent integration
+## Coding-agent skill
 
-This repository includes the [IntentLock skill](.agents/skills/intentlock/SKILL.md) and an [agent entry point](AGENTS.md). Install both in another repository to make contract checks part of ordinary coding tasks. Skill selection based only on task wording can miss a contract the user did not mention; the entry point checks for `.intentlock.yml` before edits and directs agents to run project tests and IntentLock when it exists. Without a contract, ordinary edits do not enter that workflow. The [evaluation cases](skill/evals/README.md) exercise both paths.
+The [IntentLock skill](skill/SKILL.md) is published in the visible `skill/` directory, with its [contract reference](skill/references/contracts.md) and [agent metadata](skill/agents/openai.yaml). It guides a coding agent through contract-aware changes: inspect the contract, run the project's normal tests, run `intentlock check` against the intended Git base, and report test results separately from invariant results. The CLI produces the deterministic verdict; the skill helps the agent use that verdict during its workflow.
+
+To use the skill in another repository:
+
+1. Copy the contents of [`skill/`](skill/) into `.agents/skills/intentlock/` in the target repository.
+2. Copy the instructions from this repository's [AGENTS.md](AGENTS.md) into the target repository's root `AGENTS.md`, merging with any instructions already there.
+3. Commit a `.intentlock.yml` with the invariants you want enforced, and make the IntentLock CLI available to the agent. See [Quick start](#quick-start) for contract setup.
+
+The `AGENTS.md` entry point checks for `.intentlock.yml` before file changes and directs the agent to load the skill when a contract exists, including for tasks that never mention IntentLock. In this repository, the [Codex discovery entry](.agents/skills/intentlock/SKILL.md) points to the public skill; in an installed repository, the copied skill lives at that discovery path. Without a contract, ordinary edits skip this workflow; an explicit request to initialize, check, diagnose, or change a contract still uses the skill. Read-only questions do not require a check unless the user asks for one. Installing the skill alone can miss a generic request such as “finish the refactor,” because the agent may never select it from the request wording.
+
+For an explicit check, ask the agent to use `$intentlock`, or run the CLI directly, for example `intentlock check --base main --format json --verbose`. The agent should report the policy source and trust status, warnings, and each invariant outcome. A passing check means the declared rules passed; it is not a guarantee of semantic correctness or code safety. The [skill evaluation cases](evals/README.md) are kept separately from the installable skill and cover requests with and without a contract.
 
 ## Dogfooding
 

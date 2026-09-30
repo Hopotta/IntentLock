@@ -4,6 +4,7 @@ All notable changes to IntentLock are recorded here.
 
 ## [Unreleased]
 
+- Publish the copyable IntentLock skill in `skill/`, keep a Codex discovery entry under `.agents/skills/intentlock/`, and move skill evaluations to `evals/`.
 - Add the Codex IntentLock skill at `.agents/skills/intentlock/` with trusted-policy workflow guidance, CLI and exit-code reference, contract safety notes, and concise documentation of all four invariant types.
 - Add a compact IntentLock skill evaluation suite at `skill/evals/cases.json`, covering direct, indirect, incomplete, negative, and trust/error edge prompts.
 - Require an explicitly trusted baseline for implicit base selection: only the trusted `main` contract can steer `defaults.base`, worktree-only values are ignored, and a missing `main` produces guidance to pass `--base`; add a regression for committed policy tampering that must not yield a trusted pass.

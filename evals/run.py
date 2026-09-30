@@ -23,8 +23,8 @@ from typing import Any
 
 
 EVALS_DIR = Path(__file__).resolve().parent
-REPO_ROOT = EVALS_DIR.parents[1]
-SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "intentlock"
+REPO_ROOT = EVALS_DIR.parent
+SKILL_DIR = REPO_ROOT / "skill"
 SKILL_NAME = "intentlock"
 
 
@@ -396,7 +396,7 @@ def main() -> int:
     timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = (args.output_dir or (EVALS_DIR / "results" / timestamp)).resolve()
     if not run_dir.is_relative_to(EVALS_DIR):
-        parser.error("--output-dir must stay inside skill/evals so disposable fixtures remain repo-contained")
+        parser.error("--output-dir must stay inside evals so disposable fixtures remain repo-contained")
     run_dir.mkdir(parents=True, exist_ok=False)
     (run_dir / ".fixtures").mkdir()
     results = []
