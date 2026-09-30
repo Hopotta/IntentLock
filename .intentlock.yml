@@ -27,6 +27,42 @@ invariants:
     allow_removals: true
     allow_version_changes: true
 
+  - id: protect-test-script
+    type: structured_value
+    description: Keep the test command stable during ordinary feature work.
+    severity: error
+    file: "package.json"
+    format: json
+    selector: "$.scripts.test"
+    expectation: unchanged
+
+  - id: protect-build-script
+    type: structured_value
+    description: Keep the build command stable during ordinary feature work.
+    severity: error
+    file: "package.json"
+    format: json
+    selector: "$.scripts.build"
+    expectation: unchanged
+
+  - id: protect-lint-script
+    type: structured_value
+    description: Keep the lint command stable during ordinary feature work.
+    severity: error
+    file: "package.json"
+    format: json
+    selector: "$.scripts.lint"
+    expectation: unchanged
+
+  - id: protect-typecheck-script
+    type: structured_value
+    description: Keep the typecheck command stable during ordinary feature work.
+    severity: error
+    file: "package.json"
+    format: json
+    selector: "$.scripts.typecheck"
+    expectation: unchanged
+
   - id: regression-tests
     type: command
     description: The complete test suite must pass.

@@ -11,13 +11,13 @@ defaults:
 invariants: []
 ```
 
-`project` and `defaults` are optional. `defaults.base` is used by `intentlock check` and `intentlock doctor` unless `--base` is supplied. `invariants` is required and may be empty. Each invariant has a unique `id`, a supported `type`, `severity: error | warn`, and an optional non-empty `description`.
+`project` and `defaults` are optional. An explicit `--base` selects the base ref directly. Without it, IntentLock starts with `main`; `defaults.base` from a trusted contract at that implicit baseline may select another ref. A worktree contract cannot steer implicit base selection. `invariants` is required and may be empty. Each invariant has a unique `id`, a supported `type`, `severity: error | warn`, and an optional non-empty `description`.
 
 ## Policy trust
 
 When a contract exists at the selected Git merge base, checks use that baseline version. A changed working-tree contract is reported as a warning; its changes do not affect the check. When no baseline contract exists, auto mode uses the working-tree version and marks it untrusted. `--policy-source worktree` explicitly selects the current file and marks it untrusted. `--policy-source baseline` requires a contract at the baseline. Do not use worktree-sourced contracts as trusted policy for untrusted pull requests.
 
-The baseline is resolved from the requested ref and its merge base with `HEAD`. The check compares committed, staged, unstaged, and untracked non-ignored changes. See [the verifier reference](verifier-reference.md) for invariant details.
+An explicit `--base` selects the base ref directly. Without `--base`, IntentLock starts with `main`; only a trusted contract at that implicit baseline may use `defaults.base` to select a different base. A worktree-sourced contract is untrusted and cannot steer implicit base selection. If `main` is unavailable, specify an available ref with `--base`. The baseline is resolved from the selected ref and its merge base with `HEAD`. The check compares committed, staged, unstaged, and untracked non-ignored changes. See [the verifier reference](verifier-reference.md) for invariant details.
 
 ## Paths
 

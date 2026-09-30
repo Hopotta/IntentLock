@@ -4,7 +4,7 @@ IntentLock needs enough Git history to resolve the merge base. Use `actions/chec
 
 That policy protection assumes the IntentLock executable and CI workflow are trusted. To enforce policy against untrusted pull requests, run a separately trusted, pinned IntentLock installation and use the baseline policy. Do not build the checker from the pull request checkout: the patch could modify the checker itself. Protect the workflow configuration too.
 
-IntentLock is currently private and has not been published to npm. For a repository consuming a released package, install its published version in the workflow and run:
+IntentLock has not yet been published to npm. For a repository consuming a released package, install its published version in the workflow and run:
 
 ```yaml
 - run: npm install --global intentlock@<trusted-version>

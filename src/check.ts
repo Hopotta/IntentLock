@@ -1,14 +1,13 @@
-import { loadContract, parseContract } from "./contract/loader.js";
+import { loadContract } from "./contract/loader.js";
 import { ContractError } from "./contract/errors.js";
 import { createCommandRunner } from "./commands/runner.js";
 import { createVerificationContext } from "./engine/context.js";
 import { runVerification } from "./engine/engine.js";
 import { VerifierRegistry } from "./engine/registry.js";
-import { createGitSnapshot, readCurrentFile } from "./git/snapshot.js";
+import { createGitSnapshot } from "./git/snapshot.js";
 import { discoverRepository } from "./git/repository.js";
 import { registerBuiltInVerifiers } from "./verifiers/index.js";
 import type { PolicySourceMode } from "./contract/loader.js";
-import { validateContractPath } from "./contract/schema.js";
 
 export class EnvironmentError extends Error {
   readonly name = "EnvironmentError";
@@ -31,23 +30,11 @@ export async function checkRepository(options: CheckOptions = {}) {
     try {
       snapshot = createGitSnapshot(repository, requestedBase);
     } catch (error) {
-      // A contract may select a non-main default (for example, master). When
-      // the conventional bootstrap ref is absent, read only enough of the
-      // worktree contract to locate that ref; the policy itself is loaded
-      // again from the selected merge base below and remains trusted there.
-      if (options.base !== undefined || requestedBase !== "main") throw error;
-      const contractPath = validateContractPath(
-        options.contract ?? ".intentlock.yml",
+      if (options.base !== undefined) throw error;
+      throw new EnvironmentError(
+        "Cannot establish a trusted baseline. Specify --base <ref>.",
+        { cause: error },
       );
-      const currentBytes = await readCurrentFile(repository, contractPath);
-      if (currentBytes === undefined) throw error;
-      const bootstrapContract = parseContract(
-        currentBytes.toString("utf8"),
-        contractPath,
-      );
-      const fallbackBase = bootstrapContract.defaults?.base;
-      if (!fallbackBase || fallbackBase === requestedBase) throw error;
-      snapshot = createGitSnapshot(repository, fallbackBase);
     }
   } catch (error) {
     if (error instanceof ContractError) throw error;
@@ -65,7 +52,9 @@ export async function checkRepository(options: CheckOptions = {}) {
     // base default. A second load preserves the first source: trusted policy
     // must remain baseline-backed, and worktree policy must remain untrusted.
     const defaultBase =
-      options.base === undefined ? loaded.contract.defaults?.base : undefined;
+      options.base === undefined && loaded.policy.source === "baseline"
+        ? loaded.contract.defaults?.base
+        : undefined;
     if (defaultBase && defaultBase !== snapshot.requestedBase) {
       const selectedPolicySource = loaded.policy.source;
       snapshot = createGitSnapshot(repository, defaultBase);

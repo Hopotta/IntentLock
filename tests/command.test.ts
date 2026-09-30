@@ -161,6 +161,62 @@ describe("command verifier", () => {
     expect(outcome.status).toBe("error");
     expect(outcome.summary).toContain("executable is unavailable");
   });
+
+  it("recognizes a Unix shell missing-command message tied to the executable", async () => {
+    const outcome = await commandVerifier.verify(
+      commandInvariant("tool-name"),
+      context(".", async () => ({
+        exitCode: 127,
+        stdout: "",
+        stderr: "sh: 1: tool-name: not found",
+        timedOut: false,
+        durationMs: 1,
+      })),
+    );
+
+    expect(outcome.status).toBe("error");
+    expect(outcome.summary).toContain("executable is unavailable");
+  });
+
+  it("fails when a running command prints generic 'command not found' and exits 1", async () => {
+    const outcome = await commandVerifier.verify(
+      commandInvariant(`node -e "process.exit(1)"`),
+      context(".", async () => ({
+        exitCode: 1,
+        stdout: "",
+        stderr: "command not found",
+        timedOut: false,
+        durationMs: 1,
+      })),
+    );
+
+    expect(outcome.status).toBe("fail");
+    expect(outcome.summary).toContain("code 1");
+  });
+
+  it("fails when a running command prints its own executable name and exits 1", async () => {
+    const repo = await newRepo();
+    const command = `node -e "process.stderr.write('intentlock-no-such-tool'); process.exit(1)"`;
+    const outcome = await commandVerifier.verify(
+      commandInvariant(command),
+      context(repo.root),
+    );
+
+    expect(outcome.status).toBe("fail");
+    expect(outcome.summary).toContain("code 1");
+  });
+
+  it("fails when a running command prints arbitrary mojibaked lines and exits 1", async () => {
+    const repo = await newRepo();
+    const command = `node -e "process.stderr.write('\\uFFFD\\uFFFD failure\\n\\uFFFD\\uFFFD failure'); process.exit(1)"`;
+    const outcome = await commandVerifier.verify(
+      commandInvariant(command),
+      context(repo.root),
+    );
+
+    expect(outcome.status).toBe("fail");
+    expect(outcome.summary).toContain("code 1");
+  });
 });
 
 describe("command verifier with temporary Git repositories", () => {

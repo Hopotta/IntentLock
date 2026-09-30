@@ -12,19 +12,36 @@ type CommandInvariant = Extract<Invariant, { type: "command" }>;
 function unavailableExit(
   exitCode: number | null,
   command: string,
-  stdout: string,
   stderr: string,
 ): boolean {
-  if (exitCode === 127 || exitCode === 9009) return true;
-  const bareExecutable = command.trim();
-  const isBareExecutable = /^[^\s"'|&<>]+$/.test(bareExecutable);
-  return (
-    exitCode === 1 &&
-    (/command not found|is not recognized as an internal or external command|not recognized as the name of a cmdlet/i.test(
-      `${stdout}\n${stderr}`,
-    ) ||
-      (isBareExecutable && stderr.includes(bareExecutable)))
-  );
+  const leadingExecutable = command
+    .trim()
+    .match(/^(?:"([^"]+)"|'([^']+)'|([^\s"'|&<>]+))/);
+  const executable =
+    leadingExecutable?.[1] ?? leadingExecutable?.[2] ?? leadingExecutable?.[3];
+  const escapedExecutable = executable?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const localizedWindowsMissingCommand =
+    escapedExecutable !== undefined &&
+    new RegExp(
+      `^['"]?${escapedExecutable}['"]?\\s+�{5}[^\\r\\n]+\\r?\\n�{6,}[^\\r\\n]*\\r?\\n?$`,
+    ).test(stderr);
+  const namedUnixMissingCommand =
+    escapedExecutable !== undefined &&
+    new RegExp(
+      `(?:^|[\\s:])['"]?${escapedExecutable}['"]?:\\s*(?:command\\s+)?not found\\b|command not found:\\s*['"]?${escapedExecutable}['"]?`,
+      "im",
+    ).test(stderr);
+  const namedWindowsMissingCommand =
+    escapedExecutable !== undefined &&
+    new RegExp(
+      `['"]?${escapedExecutable}['"]?\\s+is not recognized as (?:an internal or external command|the name of a cmdlet)`,
+      "i",
+    ).test(stderr);
+  if (exitCode === 9009) return true;
+  if (exitCode === 127) return namedUnixMissingCommand;
+  if (exitCode === 1)
+    return namedWindowsMissingCommand || localizedWindowsMissingCommand;
+  return false;
 }
 
 function commandEvidence(
@@ -105,7 +122,6 @@ export const commandVerifier: Verifier = {
       unavailableExit(
         execution.exitCode,
         commandInvariant.run,
-        execution.stdout,
         execution.stderr,
       )
     ) {

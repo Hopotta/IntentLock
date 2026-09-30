@@ -40,7 +40,7 @@ Run the check from anywhere inside the Git repository:
 intentlock check
 ```
 
-The check compares the patch to the Git merge base, includes committed, staged, unstaged, and untracked changes, and checks both paths of a rename. IntentLock first reads the contract at `main` to choose the default base. If that baseline contains a contract, its `defaults.base` may select a different base. If no baseline contract exists, IntentLock uses the current worktree contract, which is untrusted, and its `defaults.base` may select the base. An explicit `--base` always wins. At the selected baseline, an existing contract is used as trusted policy; a worktree-sourced contract remains untrusted. Reports identify whether the selected policy is trusted.
+The check compares the patch to the Git merge base, includes committed, staged, unstaged, and untracked changes, and checks both paths of a rename. An explicit `--base` selects the base directly. Without it, IntentLock uses `main`; only a trusted contract at that implicit baseline may set `defaults.base` to another base. A worktree contract is untrusted and cannot steer implicit base selection. If `main` is unavailable, pass an available ref with `--base`. At the selected baseline, an existing contract is used as trusted policy; a worktree-sourced contract remains untrusted. Reports identify whether the selected policy is trusted.
 
 `file_scope` patterns use [picomatch glob syntax](https://github.com/micromatch/picomatch), matched against repository-relative POSIX paths. `deny` patterns take precedence over `allow`; omit `allow` to permit every path not denied. Hidden path segments are included.
 
@@ -71,9 +71,13 @@ pnpm lint
 pnpm typecheck
 ```
 
+## Coding-agent integration
+
+This repository includes the [IntentLock skill](.agents/skills/intentlock/SKILL.md) and an [agent entry point](AGENTS.md). Install both in another repository to make contract checks part of ordinary coding tasks. Skill selection based only on task wording can miss a contract the user did not mention; the entry point checks for `.intentlock.yml` before edits and directs agents to run project tests and IntentLock when it exists. Without a contract, ordinary edits do not enter that workflow. The [evaluation cases](skill/evals/README.md) exercise both paths.
+
 ## Dogfooding
 
-This repository uses [`.intentlock.yml`](.intentlock.yml) to keep selected toolchain configuration stable during ordinary feature work, reject new package dependencies, and run the test suite. Source, tests, docs, and examples remain available for normal changes. The cross-platform CI fetches full Git history and checks against the pull request's target branch, or `main` for push events.
+This repository uses [`.intentlock.yml`](.intentlock.yml) to keep selected toolchain configuration stable during ordinary feature work, reject new package dependencies, keep the `package.json` test, build, lint, and typecheck scripts unchanged, and run the test suite. Source, tests, docs, and examples remain available for normal changes. The cross-platform CI fetches full Git history and checks against the pull request's target branch, or `main` for push events.
 
 The CI job builds IntentLock from the checkout it is checking. This demonstrates the workflow and checks policy behavior; it is not a tamper-proof enforcement boundary for untrusted pull requests. See the [CI trust guidance](docs/ci.md) for the separately trusted checker model.
 

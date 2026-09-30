@@ -1,0 +1,4 @@
+interface:
+  display_name: "IntentLock"
+  short_description: "Check software changes against trusted IntentLock contracts"
+  default_prompt: "Use $intentlock to check this patch against the repository change contract."

@@ -97,6 +97,7 @@ export const dependencyPolicyVerifier: Verifier = {
     const changes: DependencyChange[] = [];
     const errors: EvidenceItem[] = [];
     const created: EvidenceItem[] = [];
+    const deleted: EvidenceItem[] = [];
 
     for (const manifestPath of policy.manifests) {
       let baselineBytes: Buffer | null;
@@ -117,13 +118,20 @@ export const dependencyPolicyVerifier: Verifier = {
       }
 
       if (!currentBytes) {
-        errors.push({
-          kind: "dependency_manifest_error",
-          manifest: manifestPath,
-          message: baselineBytes
-            ? `Configured manifest ${manifestPath} was deleted; manifest deletion is an error.`
-            : `Configured manifest ${manifestPath} is missing from the baseline and current repository.`,
-        });
+        if (baselineBytes) {
+          deleted.push({
+            kind: "dependency_manifest_deleted",
+            manifest: manifestPath,
+            message: `Configured manifest ${manifestPath} existed at the baseline and was deleted in the current patch. Restore it or remove it from the dependency policy.`,
+            allowed: false,
+          });
+        } else {
+          errors.push({
+            kind: "dependency_manifest_error",
+            manifest: manifestPath,
+            message: `Configured manifest ${manifestPath} is missing from the baseline and current repository.`,
+          });
+        }
         continue;
       }
 
@@ -189,9 +197,10 @@ export const dependencyPolicyVerifier: Verifier = {
     }
 
     if (errors.length > 0) {
-      const knownViolations = changes.filter(
-        (change) => change.allowed === false,
-      );
+      const knownViolations = [
+        ...deleted,
+        ...changes.filter((change) => change.allowed === false),
+      ];
       return {
         invariantId: policy.id,
         type: policy.type,
@@ -204,7 +213,9 @@ export const dependencyPolicyVerifier: Verifier = {
     }
 
     const violations = changes.filter((change) => change.allowed === false);
+    const violationCount = violations.length + deleted.length;
     const allEvidence = [
+      ...deleted,
       ...violations,
       ...created,
       ...changes.filter((change) => change.allowed !== false),
@@ -231,8 +242,11 @@ export const dependencyPolicyVerifier: Verifier = {
       ).length,
     };
     const summary =
-      violations.length > 0
-        ? `${violations.length} disallowed dependency change${violations.length === 1 ? "" : "s"}: ${[
+      violationCount > 0
+        ? `${violationCount} dependency policy violation${violationCount === 1 ? "" : "s"}: ${[
+            deleted.length
+              ? `${deleted.length} configured manifest${deleted.length === 1 ? " was" : "s were"} deleted`
+              : "",
             counts.added
               ? `${counts.added} addition${counts.added === 1 ? "" : "s"}`
               : "",
@@ -252,7 +266,7 @@ export const dependencyPolicyVerifier: Verifier = {
     return {
       invariantId: policy.id,
       type: policy.type,
-      status: violations.length > 0 ? "fail" : "pass",
+      status: violationCount > 0 ? "fail" : "pass",
       severity: policy.severity,
       summary,
       evidence,

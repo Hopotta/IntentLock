@@ -1,6 +1,7 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { checkRepository } from "../src/check.js";
 import { parseContract } from "../src/contract/index.js";
 import { createVerificationContext } from "../src/engine/context.js";
 import type { VerificationContext } from "../src/engine/context.js";
@@ -163,11 +164,35 @@ describe("dependency_policy verifier", () => {
     );
   });
 
-  it("returns an error if a configured manifest is deleted", async () => {
+  it("fails with exit code 1 when a baseline-configured manifest is deleted", async () => {
     const repo = await newRepo();
     await repo.write("package.json", JSON.stringify({ dependencies: {} }));
+    await repo.write(
+      ".intentlock.yml",
+      `version: 1\ninvariants:\n  - id: deps\n    type: dependency_policy\n    severity: error\n    manifests: [package.json]\n    allow_additions: false\n    allow_removals: false\n    allow_version_changes: false\n`,
+    );
     const base = repo.commit("baseline");
     await rm(join(repo.root, "package.json"));
+
+    const { report } = await checkRepository({ cwd: repo.root, base });
+
+    expect(report.status).toBe("fail");
+    expect(report.exitCode).toBe(1);
+    expect(report.results[0]?.evidence).toContainEqual(
+      expect.objectContaining({
+        kind: "dependency_manifest_deleted",
+        manifest: "package.json",
+        message: expect.stringContaining(
+          "Restore it or remove it from the dependency policy",
+        ),
+        allowed: false,
+      }),
+    );
+  });
+
+  it("returns an error when a configured manifest is missing from both revisions", async () => {
+    const repo = await newRepo();
+    const base = repo.commit("baseline without manifest");
 
     const result = await run(repo, base);
 
@@ -176,7 +201,9 @@ describe("dependency_policy verifier", () => {
       expect.objectContaining({
         kind: "dependency_manifest_error",
         manifest: "package.json",
-        message: expect.stringContaining("was deleted"),
+        message: expect.stringContaining(
+          "missing from the baseline and current repository",
+        ),
       }),
     );
   });

@@ -4,7 +4,13 @@ All notable changes to IntentLock are recorded here.
 
 ## [Unreleased]
 
-- Dogfood IntentLock with a repository policy that protects selected design and toolchain files, blocks dependency additions, and runs tests; run the built CLI in cross-platform CI after fetching full Git history.
+- Add the Codex IntentLock skill at `.agents/skills/intentlock/` with trusted-policy workflow guidance, CLI and exit-code reference, contract safety notes, and concise documentation of all four invariant types.
+- Add a compact IntentLock skill evaluation suite at `skill/evals/cases.json`, covering direct, indirect, incomplete, negative, and trust/error edge prompts.
+- Require an explicitly trusted baseline for implicit base selection: only the trusted `main` contract can steer `defaults.base`, worktree-only values are ignored, and a missing `main` produces guidance to pass `--base`; add a regression for committed policy tampering that must not yield a trusted pass.
+- Fail `dependency_policy` when a configured manifest is deleted, with real-Git regression coverage.
+- Classify a command as unavailable only when its shell reports the configured executable missing, including Unix exit 127 and localized Windows messages; unrelated `command not found` output from a running process remains a command failure.
+- Protect the `package.json` test, build, lint, and typecheck scripts in the dogfood contract; add the MIT license, publish the tracked design specification while keeping the original local notes ignored, and update the trust and npm publication guidance.
+- Dogfood IntentLock with a repository policy that protects selected toolchain files and package scripts, blocks dependency additions, and runs tests; run the built CLI in cross-platform CI after fetching full Git history.
 - Reject `doctor --contract` paths outside the repository and clarify that secure pull request enforcement requires a separately trusted checker and workflow.
 - Make `doctor --contract` reject symlinks that resolve outside the repository, and clarify default-base selection when no baseline contract exists.
 - Keep successful command logs out of terminal reports while retaining output for failed commands.

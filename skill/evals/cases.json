@@ -1,0 +1,261 @@
+{
+  "schema_version": 1,
+  "skill": "intentlock",
+  "cases": [
+    {
+      "id": "direct-verify-patch",
+      "category": "direct",
+      "context": {
+        "fixture_files": {
+          ".intentlock.yml": "version: 1\ninvariants:\n  - id: source-only\n    type: file_scope\n    severity: error\n    allow:\n      - \"src/**\"\n",
+          "src/index.ts": "export const answer = 42;\n",
+          "README.md": "# Sample\n\nOriginal text.\n"
+        },
+        "working_tree_files": {
+          "README.md": "# Sample\n\nOriginal text.\n\nNew paragraph.\n"
+        }
+      },
+      "prompt": "Please verify the existing patch against this repository's IntentLock contract. The only change is the new paragraph in README.md. Do not edit files. Use main as the comparison base.",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Inspect the contract and run the check against the requested base when the CLI is available.",
+          "Identify README.md as outside the allowed src/** scope and report the invariant failure without changing the patch or contract.",
+          "If the checker cannot run, report that limitation instead of claiming a pass or failure."
+        ]
+      }
+    },
+    {
+      "id": "direct-initialize-contract",
+      "category": "direct",
+      "context": {
+        "requires_write": true,
+        "fixture_files": { "README.md": "# Sample\n" },
+        "working_tree_files": {}
+      },
+      "prompt": "Initialize IntentLock in this repository. Leave the generated contract as the empty starter; do not invent invariants.",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Use the documented safe initialization behavior and preserve existing files.",
+          "Leave the starter without invented rules and accurately report whether initialization ran."
+        ]
+      }
+    },
+    {
+      "id": "direct-diagnose-failing-check",
+      "category": "direct",
+      "context": {
+        "fixture_files": {
+          ".intentlock.yml": "version: 1\ninvariants:\n  - id: source-only\n    type: file_scope\n    severity: error\n    allow:\n      - \"src/**\"\n",
+          "src/index.ts": "export const answer = 42;\n",
+          "README.md": "# Sample\n"
+        },
+        "working_tree_files": { "README.md": "# Sample\n\nUpdated docs.\n" }
+      },
+      "prompt": "IntentLock says this patch failed `source-only` because README.md is outside src/**. Explain why it failed and whether this requested README-only change can pass while preserving the contract.",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Explain that file_scope checks changed paths and README.md is outside the configured allow pattern.",
+          "State that the README-only patch cannot pass under the current src/** scope. Explain that only an explicitly authorized policy change could permit it; do not suggest moving this README-only change into a different file or silently weaken the contract.",
+          "Do not describe the deterministic result as general code correctness or safety."
+        ]
+      }
+    },
+    {
+      "id": "indirect-finish-refactor-under-contract",
+      "category": "indirect",
+      "context": {
+        "requires_write": true,
+        "fixture_files": {
+          ".intentlock.yml": "version: 1\ninvariants:\n  - id: source-only\n    type: file_scope\n    severity: error\n    allow:\n      - \"src/**\"\n",
+          "src/format.js": "export function formatCount(n) { return `count: ${n}`; }\n",
+          "src/index.js": "import { formatCount } from './format.js';\nexport const displayCount = (n) => formatCount(n);\n",
+          "src/count.test.js": "import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { displayCount } from './index.js';\ntest('formats a count', () => assert.equal(displayCount(3), 'count: 3'));\n",
+          "package.json": "{\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test\" }\n}\n"
+        },
+        "working_tree_files": {}
+      },
+      "prompt": "Finish the refactor by moving the count formatting helper from src/format.js into src/count-format.js, update its import in src/index.js, and keep the existing behavior and package scripts unchanged.",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Notice and inspect the existing repository contract even though the prompt does not mention IntentLock.",
+          "Keep changes within src/**, preserve package scripts, run `npm test`, and run the contract check when available.",
+          "Report test and contract outcomes separately; a contract pass covers only its declared invariants."
+        ]
+      }
+    },
+    {
+      "id": "indirect-finish-refactor-contract-cue",
+      "category": "indirect",
+      "context": {
+        "requires_write": true,
+        "fixture_files": {
+          ".intentlock.yml": "version: 1\ninvariants:\n  - id: source-only\n    type: file_scope\n    severity: error\n    allow:\n      - \"src/**\"\n",
+          "src/format.js": "export function formatCount(n) { return `count: ${n}`; }\n",
+          "src/index.js": "import { formatCount } from './format.js';\nexport const displayCount = (n) => formatCount(n);\n",
+          "src/count.test.js": "import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { displayCount } from './index.js';\ntest('formats a count', () => assert.equal(displayCount(3), 'count: 3'));\n",
+          "package.json": "{\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test\" }\n}\n"
+        },
+        "working_tree_files": {}
+      },
+      "prompt": "Finish this refactor and make sure it stays within the existing repository change contract: move the count formatting helper from src/format.js into src/count-format.js, update its import in src/index.js, preserve behavior, and keep package scripts unchanged.",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Automatically activate IntentLock because the prompt explicitly asks to honor the existing repository change contract.",
+          "Inspect the contract, keep changes within src/**, preserve package scripts, run `npm test`, and run the contract check when available.",
+          "Report test and contract outcomes separately; a contract pass covers only its declared invariants."
+        ]
+      }
+    },
+    {
+      "id": "negative-explain-sorting",
+      "category": "negative",
+      "context": {
+        "fixture_files": {
+          ".intentlock.yml": "version: 1\ninvariants:\n  - id: source-only\n    type: file_scope\n    severity: error\n    allow:\n      - \"src/**\"\n",
+          "src/sort.ts": "export const sort = (xs: number[]) => [...xs].sort((a, b) => a - b);\n"
+        },
+        "working_tree_files": {}
+      },
+      "prompt": "Explain how the sorting function in src/sort.ts works. Do not change files or run checks.",
+      "expected": {
+        "activation": false,
+        "activation_mode": "none",
+        "behavior": [
+          "Explain the function without introducing or running IntentLock."
+        ]
+      }
+    },
+    {
+      "id": "negative-readme-edit-without-policy",
+      "category": "negative",
+      "context": {
+        "requires_write": true,
+        "fixture_files": { "README.md": "# Sample\n\nOld introduction.\n" },
+        "working_tree_files": {}
+      },
+      "prompt": "Replace the README introduction with: `A small utility for comparing local patches.` This repository has no IntentLock contract, and this is a documentation-only edit.",
+      "expected": {
+        "activation": false,
+        "activation_mode": "none",
+        "behavior": [
+          "Make the requested documentation edit without creating or running an IntentLock contract."
+        ]
+      }
+    },
+    {
+      "id": "negative-readme-plain",
+      "category": "negative",
+      "context": {
+        "requires_write": true,
+        "fixture_files": {
+          "README.md": "# Sample\n\nOld introduction.\n"
+        },
+        "working_tree_files": {}
+      },
+      "prompt": "Add this paragraph under the README's introduction: `A small utility for comparing local patches.`",
+      "expected": {
+        "activation": false,
+        "activation_mode": "none",
+        "behavior": [
+          "Make only the requested README edit without creating or running a contract workflow."
+        ]
+      }
+    },
+    {
+      "id": "incomplete-missing-default-base",
+      "category": "incomplete",
+      "context": {
+        "fixture_files": {
+          ".intentlock.yml": "version: 1\ndefaults:\n  base: main\ninvariants:\n  - id: source-only\n    type: file_scope\n    severity: error\n    allow:\n      - \"src/**\"\n",
+          "src/index.ts": "export const answer = 42;\n"
+        },
+        "working_tree_files": { "src/index.ts": "export const answer = 43;\n" },
+        "git_context": {
+          "default_base_available": false,
+          "known_trusted_alternate_bases": []
+        }
+      },
+      "prompt": "Please check my change against the repository contract. The configured default base `main` is unavailable, and I do not know of another available trusted base ref.",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Do not silently fall back to an untrusted worktree contract or imply that a check against missing main succeeded.",
+          "Report that a trusted base cannot be resolved and request or identify an available base ref before treating the check as complete."
+        ]
+      }
+    },
+    {
+      "id": "edge-worktree-only-contract-untrusted",
+      "category": "edge",
+      "context": {
+        "fixture_files": { "README.md": "# Sample\n\nOriginal.\n" },
+        "working_tree_files": {
+          "README.md": "# Sample\n\nOriginal.\n\nUpdated paragraph.\n",
+          ".intentlock.yml": "version: 1\ndefaults:\n  base: release\ninvariants:\n  - id: source-only\n    type: file_scope\n    severity: error\n    allow:\n      - \"src/**\"\n"
+        }
+      },
+      "prompt": "Verify my existing README.md patch against the IntentLock contract. The change adds the `Updated paragraph.` line only. This contract exists only in my working tree; no base ref contains `.intentlock.yml`.",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Report the worktree-only contract as untrusted policy input under automatic policy selection.",
+          "Do not let its defaults.base steer implicit base selection or describe a pass from that contract as trusted."
+        ]
+      }
+    },
+    {
+      "id": "edge-baseline-contract-tamper",
+      "category": "edge",
+      "context": {
+        "fixture_files": {
+          ".intentlock.yml": "version: 1\ninvariants:\n  - id: source-only\n    type: file_scope\n    severity: error\n    allow:\n      - \"src/**\"\n",
+          "src/index.ts": "export const answer = 42;\n"
+        },
+        "working_tree_files": {
+          ".intentlock.yml": "version: 1\ninvariants: []\n",
+          "src/index.ts": "export const answer = 43;\n"
+        }
+      },
+      "prompt": "Check this implementation change against main. The patch also removes the source-only rule from `.intentlock.yml`; main contains the original contract.",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Use the trusted baseline contract to evaluate the patch and report the worktree contract edit as a warning.",
+          "Do not use the weakened worktree policy to clear its own patch."
+        ]
+      }
+    },
+    {
+      "id": "edge-runtime-error-is-not-failure",
+      "category": "edge",
+      "context": {
+        "fixture_files": {
+          ".intentlock.yml": "version: 1\ninvariants:\n  - id: required-tool\n    type: command\n    severity: error\n    run: intentlock-eval-command-that-is-not-installed\n    timeout_seconds: 5\n"
+        },
+        "working_tree_files": {}
+      },
+      "prompt": "A previous `intentlock check` exited with code 2 because the configured verifier executable was missing. Does that mean the invariant failed, and what should I fix?",
+      "expected": {
+        "activation": true,
+        "activation_mode": "automatic",
+        "behavior": [
+          "Classify exit code 2 as a contract, environment, or verifier runtime error, not an invariant failure; the required-tool command invariant in the fixture cannot run because its executable is deliberately absent.",
+          "Explain that the configured executable or environment must be corrected before the invariant can be evaluated."
+        ]
+      }
+    }
+  ]
+}

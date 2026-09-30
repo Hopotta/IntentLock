@@ -389,7 +389,7 @@ describe("intentlock CLI bootstrap", () => {
     }
   });
 
-  it("uses a contract default when the repository has no main branch", async () => {
+  it("requires an explicit base when the repository has no main branch", async () => {
     const repo = await createTestGitRepo();
     try {
       repo.git("branch", "-m", "master");
@@ -401,7 +401,20 @@ describe("intentlock CLI bootstrap", () => {
       const master = repo.commit("trusted baseline");
       await repo.write("src/index.ts", "changed\n");
 
-      const result = runCli(repo.root, "check", "--format", "json");
+      const implicit = runCli(repo.root, "check");
+      expect(implicit.status).toBe(2);
+      expect(implicit.stderr).toContain(
+        "Cannot establish a trusted baseline. Specify --base <ref>.",
+      );
+
+      const result = runCli(
+        repo.root,
+        "check",
+        "--base",
+        "master",
+        "--format",
+        "json",
+      );
       expect(result.status).toBe(0);
       expect(JSON.parse(result.stdout)).toMatchObject({
         status: "pass",
@@ -413,7 +426,7 @@ describe("intentlock CLI bootstrap", () => {
     }
   });
 
-  it("keeps a worktree-selected default untrusted when its target has a baseline contract", async () => {
+  it("ignores a worktree default base when main exists", async () => {
     const repo = await createTestGitRepo();
     try {
       repo.commit("baseline without contract");
@@ -433,12 +446,70 @@ describe("intentlock CLI bootstrap", () => {
       const result = runCli(repo.root, "check", "--format", "json");
       const json = JSON.parse(result.stdout);
       expect(result.status).toBe(0);
-      expect(json.baseline.requested).toBe("policy-base");
+      expect(json.baseline.requested).toBe("main");
       expect(json.policy).toMatchObject({
         source: "worktree",
         untrusted: true,
       });
-      expect(json.policy.sourceReason).toBe("worktree-override");
+      expect(json.policy.sourceReason).toBe("baseline-missing");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("cannot bootstrap an implicit baseline from an attacker-selected worktree base", async () => {
+    const repo = await createTestGitRepo();
+    try {
+      repo.git("branch", "-m", "master");
+      await repo.write(
+        ".intentlock.yml",
+        `version: 1\ninvariants:\n  - id: src-only\n    type: file_scope\n    severity: error\n    allow: ["src/**"]\n`,
+      );
+      await repo.write("src/index.ts", "baseline\n");
+      repo.commit("trusted master policy");
+      repo.git("checkout", "-b", "feature");
+      await repo.write(
+        ".intentlock.yml",
+        `version: 1\ndefaults:\n  base: HEAD\ninvariants:\n  - id: src-only\n    type: file_scope\n    severity: error\n    allow: ["**"]\n`,
+      );
+      await repo.write("README.md", "forbidden change\n");
+      repo.commit("weaken policy and edit forbidden file");
+
+      const implicit = runCli(repo.root, "check", "--format", "json");
+      expect(implicit.status).toBe(2);
+      expect(JSON.parse(implicit.stdout)).toMatchObject({
+        status: "error",
+        error: {
+          kind: "environment_error",
+          message: "Cannot establish a trusted baseline. Specify --base <ref>.",
+        },
+      });
+
+      const explicit = runCli(
+        repo.root,
+        "check",
+        "--base",
+        "master",
+        "--format",
+        "json",
+      );
+      expect(explicit.status).toBe(1);
+      expect(JSON.parse(explicit.stdout)).toMatchObject({
+        status: "fail",
+        policy: { source: "baseline", untrusted: false },
+      });
+      expect(JSON.parse(explicit.stdout).results).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            invariantId: "src-only",
+            status: "fail",
+            summary: expect.stringContaining("changed paths violate"),
+            evidence: expect.arrayContaining([
+              expect.objectContaining({ path: "README.md" }),
+            ]),
+          }),
+        ]),
+      );
     } finally {
       await repo.cleanup();
     }
