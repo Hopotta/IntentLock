@@ -1,0 +1,35 @@
+version: 1
+
+project:
+  name: IntentLock
+
+defaults:
+  base: main
+
+invariants:
+  - id: protect-project-contracts
+    type: file_scope
+    description: Keep selected toolchain configuration stable during ordinary feature work.
+    severity: error
+    deny:
+      - "tsconfig.json"
+      - "tsup.config.ts"
+      - "eslint.config.js"
+      - ".prettierrc.json"
+
+  - id: no-new-dependencies
+    type: dependency_policy
+    description: Do not add runtime or development dependencies without an explicit policy change.
+    severity: error
+    manifests:
+      - "package.json"
+    allow_additions: false
+    allow_removals: true
+    allow_version_changes: true
+
+  - id: regression-tests
+    type: command
+    description: The complete test suite must pass.
+    severity: error
+    run: "corepack pnpm test"
+    timeout_seconds: 180

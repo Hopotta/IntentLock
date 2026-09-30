@@ -1,0 +1,30 @@
+version: 1
+
+project:
+  name: node-project
+
+defaults:
+  base: main
+
+invariants:
+  - id: source-and-tests
+    type: file_scope
+    severity: error
+    allow:
+      - "src/**"
+      - "tests/**"
+
+  - id: no-new-dependencies
+    type: dependency_policy
+    severity: error
+    manifests:
+      - package.json
+    allow_additions: false
+    allow_removals: true
+    allow_version_changes: true
+
+  - id: tests
+    type: command
+    severity: error
+    run: "pnpm test"
+    timeout_seconds: 120

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.intentlock/cache/
+.intentlock/report.json
+
+# Private design notes
+IntentLock-DESIGN.md
+DESIGN.md
+design.md

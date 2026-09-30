@@ -1,0 +1,18 @@
+IntentLock 0.1.0
+Policy: .intentlock.yml (trusted baseline)
+FAIL  source-scope
+      1 changed path violates the allowed change scope.
+      README.md outside allowed scope
+FAIL  no-new-dependencies
+      1 disallowed dependency change: 1 addition.
+      package.json dependencies: left-pad (absent) → 1.3.0
+FAIL  keep-window-size
+      Configured value changed.
+      src/window.yml $.window.width
+      420 → 448
+FAIL  regression-tests
+      Command exited with code 1.
+      $ pnpm test
+      Exit code: 1
+      stdout: 1 test failed
+IntentLock FAIL — 4 invariants violated.

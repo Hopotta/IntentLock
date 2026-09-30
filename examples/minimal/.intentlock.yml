@@ -1,0 +1,8 @@
+version: 1
+
+invariants:
+  - id: source-only
+    type: file_scope
+    severity: error
+    allow:
+      - "src/**"
